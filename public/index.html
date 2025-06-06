@@ -23,19 +23,27 @@
       const formData = new FormData(e.target);
       const dados = Object.fromEntries(formData.entries());
 
-      const resp = await fetch('/pix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados)
-      });
+      // Corrige o campo amount para float com duas casas
+      dados.amount = parseFloat(dados.amount).toFixed(2);
 
-      const json = await resp.json();
+      try {
+        const resp = await fetch('/pix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
 
-      const div = document.getElementById('resultado');
-      if (json.qr_code_image) {
-        div.innerHTML = `<img src="${json.qr_code_image}" alt="QR Code Pix"><br><code>${json.qr_code}</code>`;
-      } else {
-        div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
+        const json = await resp.json();
+        const div = document.getElementById('resultado');
+
+        if (json.qr_code_image) {
+          div.innerHTML = `<img src="${json.qr_code_image}" alt="QR Code Pix"><br><code>${json.qr_code}</code>`;
+        } else {
+          div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
+        }
+      } catch (err) {
+        document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro de conexão</p>`;
+        console.error("Erro no fetch:", err);
       }
     });
   </script>
