@@ -9,108 +9,64 @@
       color: #fff;
       font-family: Arial, sans-serif;
       padding: 30px;
-    }
-
-    h2 {
       text-align: center;
-      font-size: 28px;
-      margin-bottom: 20px;
     }
 
     form {
-      max-width: 450px;
-      margin: 0 auto;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
+      max-width: 400px;
+      margin: auto;
+    }
+
+    input, button, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      box-sizing: border-box;
     }
 
     input {
-      padding: 14px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
       background-color: #fff;
       color: #000;
     }
 
-    input::placeholder {
-      color: #555;
-    }
-
-    button[type="submit"] {
+    button {
       background-color: #007bff;
-      border: none;
-      padding: 14px;
-      font-size: 18px;
-      border-radius: 6px;
       color: white;
       cursor: pointer;
-      transition: background-color 0.3s ease;
+      transition: background-color 0.3s;
     }
 
-    button[type="submit"]:hover {
+    button:hover {
       background-color: #0056b3;
-    }
-
-    #resultado {
-      max-width: 450px;
-      margin: 30px auto 0;
-      text-align: center;
-    }
-
-    textarea {
-      width: 100%;
-      padding: 14px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #555;
-      background-color: #111;
-      color: #eee;
-      resize: none;
     }
 
     #copiarBtn {
+      background-color: #28a745;
       margin-top: 10px;
-      padding: 12px 20px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: none;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
     }
 
-    #copiarBtn:hover {
-      background-color: #0056b3;
-    }
-
-    #copiarMsg {
-      margin-top: 10px;
-      color: #00ff00;
-      font-weight: bold;
-      opacity: 0;
-      transition: opacity 0.3s ease;
-    }
-
-    #copiarMsg.show {
-      opacity: 1;
+    #copiadoMsg {
+      color: #28a745;
+      font-size: 14px;
+      margin-top: 5px;
+      display: none;
     }
   </style>
 </head>
 <body>
   <h2>Pagamento Pix</h2>
+
   <form id="pixForm">
     <input name="name" placeholder="Nome completo" required />
     <input name="document" placeholder="CPF (somente números)" required />
-    <input name="email" placeholder="Email (opcional)" />
     <input name="amount" placeholder="Valor (ex: 15.50)" required />
     <button type="submit">Gerar Código Pix</button>
   </form>
 
-  <div id="resultado"></div>
-  <div id="copiarMsg">Código copiado com sucesso!</div>
+  <div id="resultado" style="margin-top: 20px;"></div>
 
   <script>
     document.getElementById('pixForm').addEventListener('submit', async (e) => {
@@ -118,7 +74,6 @@
 
       const formData = new FormData(e.target);
       const dados = Object.fromEntries(formData.entries());
-
       const urlBackend = 'https://pix-vercel-5.onrender.com/pix';
 
       try {
@@ -130,23 +85,24 @@
 
         const json = await resp.json();
         const div = document.getElementById('resultado');
-        const copiarMsg = document.getElementById('copiarMsg');
 
         if (json.pix_code) {
           div.innerHTML = `
             <p>Código Pix para copiar:</p>
-            <textarea id="pixCode" rows="4" readonly>${json.pix_code}</textarea><br />
-            <button id="copiarBtn">Copiar Código Pix</button>
+            <textarea id="pixCode" rows="4" readonly>${json.pix_code}</textarea>
+            <button id="copiarBtn">Copiar Código</button>
+            <div id="copiadoMsg">Copiado!</div>
           `;
-          copiarMsg.classList.remove('show');
 
-          document.getElementById('copiarBtn').onclick = () => {
-            const textarea = document.getElementById('pixCode');
-            textarea.select();
+          document.getElementById('copiarBtn').addEventListener('click', () => {
+            const texto = document.getElementById('pixCode');
+            texto.select();
             document.execCommand('copy');
-            copiarMsg.classList.add('show');
-            setTimeout(() => copiarMsg.classList.remove('show'), 2000);
-          };
+
+            const msg = document.getElementById('copiadoMsg');
+            msg.style.display = 'block';
+            setTimeout(() => msg.style.display = 'none', 2000);
+          });
         } else {
           div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
         }
