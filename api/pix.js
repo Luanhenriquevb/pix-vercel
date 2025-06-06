@@ -7,13 +7,23 @@ router.post('/', async (req, res) => {
   try {
     const { name, document, email, amount, external_id } = req.body;
 
-    if (!name || !document || !amount) {
-      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
+    // Validação mais rígida de campos obrigatórios e amount válido
+    if (
+      !name || 
+      !document || 
+      amount === undefined || 
+      amount === null || 
+      isNaN(amount) || 
+      Number(amount) <= 0
+    ) {
+      return res.status(400).json({ error: { message: "Campos obrigatórios faltando ou inválidos." } });
     }
 
     const token = await obterToken();
 
-    // Payload ajustado para o endpoint /v2/pix/qrcode conforme BSPay
+    // Converte amount para número com 2 casas decimais
+    const valorOriginal = Number(amount).toFixed(2);
+
     const payload = {
       calendario: { expiracao: 3600 }, // 1 hora de expiração
       devedor: {
@@ -23,7 +33,7 @@ router.post('/', async (req, res) => {
         email: email || undefined,
       },
       valor: {
-        original: parseFloat(amount).toFixed(2).toString()
+        original: valorOriginal
       },
       chave: process.env.BSPAY_PIX_KEY, // sua chave Pix cadastrada
       solicitacaoPagador: "Pagamento via BSPay",
@@ -32,12 +42,11 @@ router.post('/', async (req, res) => {
       ]
     };
 
-    // Limpa propriedades undefined para evitar erros
+    // Remove campos undefined para evitar erros
     if (!payload.devedor.cpf) delete payload.devedor.cpf;
     if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
     if (!payload.devedor.email) delete payload.devedor.email;
 
-    // Chamada para o endpoint correto
     const response = await fetch('https://api.bspay.co/v2/pix/qrcode', {
       method: 'POST',
       headers: {
