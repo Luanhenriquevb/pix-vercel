@@ -1,43 +1,25 @@
 const express = require('express');
 const router = express.Router();
 const fetch = require('node-fetch');
-const { obterToken } = require('./token'); // importa o token
+const { obterToken } = require('./token'); // seu token.js
 
 router.post('/', async (req, res) => {
   try {
-    const { name, document, email, amount, external_id } = req.body;
+    const { amount } = req.body;
 
-    if (!name || !document || !amount) {
-      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
+    if (!amount) {
+      return res.status(400).json({ error: { message: "Campo 'amount' é obrigatório." } });
     }
 
     const token = await obterToken();
 
     const payload = {
-      calendario: { expiracao: 3600 },
-      devedor: {
-        cpf: document.length === 11 ? document : undefined,
-        cnpj: document.length === 14 ? document : undefined,
-        nome: name,
-        email: email || undefined,
-      },
-      valor: {
-        original: parseFloat(amount).toFixed(2).toString()
-      },
-      chave: process.env.BSPAY_PIX_KEY,
-      solicitacaoPagador: "Pagamento via BSPay",
-      infoAdicionais: [
-        { nome: "external_id", valor: external_id || "id_" + Date.now() }
-      ]
+      chave: process.env.BSPAY_PIX_KEY, // sua chave Pix
+      valor: parseFloat(amount).toFixed(2).toString(),
+      solicitacaoPagador: "Pagamento BSPay"
     };
 
-    // Remove campos undefined
-    if (!payload.devedor.cpf) delete payload.devedor.cpf;
-    if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
-    if (!payload.devedor.email) delete payload.devedor.email;
-
-    const response = await fetch('https://api.bspay.co/v2/pix/qrcode
-', {
+    const response = await fetch('https://api.bspay.co/v2/pix/qrcode', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -46,14 +28,24 @@ router.post('/', async (req, res) => {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
+    const text = await response.text(); // captura como texto (para debug se der erro)
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data });
+    try {
+      const data = JSON.parse(text);
+
+      if (!response.ok) {
+        return res.status(response.status).json({ error: data });
+      }
+
+      // Retorna o código Pix e o base64
+      return res.json({
+        qr_code: data.qrCode,
+        qr_code_image: data.qrCodeBase64
+      });
+    } catch (err) {
+      console.error("Erro ao converter resposta BSPay:", text);
+      return res.status(500).json({ error: { message: "Resposta BSPay inválida." } });
     }
-
-    // 🔧 Ajuste temporário: responde com todo o JSON retornado pela BSPay
-    res.json(data);
 
   } catch (error) {
     console.error("Erro pix.js:", error);
