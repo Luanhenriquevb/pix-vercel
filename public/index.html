@@ -23,22 +23,26 @@
       const formData = new FormData(e.target);
       const dados = Object.fromEntries(formData.entries());
 
-      const resp = await fetch('/pix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dados),
-      });
+      try {
+        const resp = await fetch('https://pix-vercel-5.onrender.com/pix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados),
+        });
 
-      const json = await resp.json();
+        const json = await resp.json();
 
-      const div = document.getElementById('resultado');
-      if (json.qr_code) {
-        div.innerHTML = `
-          <p>Código Pix para copiar:</p>
-          <textarea rows="4" cols="60" readonly>${json.qr_code}</textarea>
-        `;
-      } else {
-        div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
+        const div = document.getElementById('resultado');
+        if (json.qr_code) {
+          div.innerHTML = `
+            <p>Código Pix para copiar:</p>
+            <textarea rows="4" cols="60" readonly>${json.qr_code}</textarea>
+          `;
+        } else {
+          div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
+        }
+      } catch (err) {
+        document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro ao conectar com servidor</p>`;
       }
     });
   </script>
