@@ -3,103 +3,6 @@
 <head>
   <meta charset="UTF-8" />
   <title>Gerar Pix BSPay</title>
-  <style>
-    body {
-      background-color: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-
-    form {
-      max-width: 400px;
-      margin: 0 auto 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 15px;
-    }
-
-    input {
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-      outline: none;
-      background-color: #fff; /* fundo branco */
-      color: #000;            /* texto preto */
-    }
-
-    input::placeholder {
-      color: #555;
-    }
-
-    button[type="submit"] {
-      background-color: #007bff;
-      border: none;
-      padding: 14px;
-      font-size: 18px;
-      border-radius: 6px;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    button[type="submit"]:hover {
-      background-color: #0056b3;
-    }
-
-    #resultado {
-      max-width: 400px;
-      margin: 0 auto;
-      text-align: center;
-      font-size: 16px;
-      color: #eee;
-    }
-
-    textarea {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: 1px solid #555;
-      background-color: #111;
-      color: #eee;
-      resize: none;
-    }
-
-    #copiarBtn {
-      margin-top: 10px;
-      padding: 12px 20px;
-      font-size: 16px;
-      border-radius: 6px;
-      border: none;
-      background-color: #007bff;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    #copiarBtn:hover {
-      background-color: #0056b3;
-    }
-
-    #copiarMsg {
-      margin-top: 10px;
-      color: #0f0;
-      font-weight: bold;
-      opacity: 0;
-      transition: opacity 0.4s ease;
-    }
-
-    #copiarMsg.show {
-      opacity: 1;
-    }
-  </style>
 </head>
 <body>
   <h2>Pagamento Pix</h2>
@@ -111,8 +14,7 @@
     <button type="submit">Gerar Código Pix</button>
   </form>
 
-  <div id="resultado"></div>
-  <div id="copiarMsg">Código copiado!</div>
+  <div id="resultado" style="margin-top: 20px;"></div>
 
   <script>
     document.getElementById('pixForm').addEventListener('submit', async (e) => {
@@ -121,6 +23,7 @@
       const formData = new FormData(e.target);
       const dados = Object.fromEntries(formData.entries());
 
+      // ATENÇÃO: substitua esta URL pela do seu backend rodando no Render ou Vercel
       const urlBackend = 'https://pix-vercel-5.onrender.com/pix';
 
       try {
@@ -133,31 +36,13 @@
         const json = await resp.json();
 
         const div = document.getElementById('resultado');
-        const copiarMsg = document.getElementById('copiarMsg');
-
-        if (json.qr_code) {
+        if (json.pix_code) {
           div.innerHTML = `
             <p>Código Pix para copiar:</p>
-            <textarea id="pixCode" rows="4" readonly>${json.qr_code}</textarea>
-            <button id="copiarBtn">Copiar código</button>
+            <textarea rows="4" cols="60" readonly>${json.pix_code}</textarea>
           `;
-
-          copiarMsg.classList.remove('show');
-
-          document.getElementById('copiarBtn').onclick = () => {
-            const textarea = document.getElementById('pixCode');
-            textarea.select();
-            textarea.setSelectionRange(0, 99999);
-            document.execCommand('copy');
-
-            copiarMsg.classList.add('show');
-            setTimeout(() => {
-              copiarMsg.classList.remove('show');
-            }, 2000);
-          };
         } else {
           div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
-          copiarMsg.classList.remove('show');
         }
       } catch (error) {
         document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro na comunicação: ${error.message}</p>`;
