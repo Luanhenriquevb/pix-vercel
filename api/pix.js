@@ -1,57 +1,80 @@
 const express = require('express');
-const fetch = require('node-fetch');
-const { obterToken } = require('./token');
-
 const router = express.Router();
+const fetch = require('node-fetch');
+require('dotenv').config();
+
+let token = null;
+let tokenExpiraEm = null;
+
+async function obterToken() {
+  if (token && tokenExpiraEm && Date.now() < tokenExpiraEm) return token;
+
+  const client_id = process.env.BSPAY_CLIENT_ID;
+  const client_secret = process.env.BSPAY_CLIENT_SECRET;
+  const credentials = Buffer.from(`${client_id}:${client_secret}`).toString('base64');
+
+  const resposta = await fetch('https://api.bspay.co/v2/oauth/token', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${credentials}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({})
+  });
+
+  const data = await resposta.json();
+  if (!resposta.ok || !data.access_token) {
+    throw new Error(data.message || 'Erro ao autenticar na BSPay');
+  }
+
+  token = data.access_token;
+  tokenExpiraEm = Date.now() + (data.expires_in * 1000) - 60000;
+  return token;
+}
 
 router.post('/', async (req, res) => {
   try {
-    const { name, document, email, amount, external_id } = req.body;
+    const { name, document, email, amount } = req.body;
 
     if (!name || !document || !amount) {
-      return res.status(400).json({ error: { message: 'Campos obrigatórios faltando.' } });
-    }
-
-    const valor = Number(String(amount).replace(',', '.'));
-    if (!Number.isFinite(valor) || valor <= 0) {
-      return res.status(400).json({ error: { message: "Campo 'amount' inválido." } });
+      return res.status(400).json({ error: 'Campos obrigatórios ausentes' });
     }
 
     const token = await obterToken();
 
     const payload = {
-      amount: valor,
-      external_id: external_id || `id_${Date.now()}`,
-      postbackUrl: 'https://pix-vercel-5.onrender.com/postback', // troque se necessário
-      payerQuestion: 'Pagamento via BSPay',
-      payer: { name, document }
+      amount: parseFloat(amount),
+      external_id: `id_${Date.now()}`,
+      payerQuestion: 'Pagamento via Pix',
+      postbackUrl: `${process.env.POSTBACK_URL || 'https://seusite.com/postback'}`,
+      payer: {
+        name,
+        document,
+        email: email || ''
+      }
     };
-    if (email) payload.payer.email = email;
 
-    const rsp = await fetch('https://api.bspay.co/v2/pix/qrcode', {
+    const resposta = await fetch('https://api.bspay.co/v2/pix/qrcode', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(payload)
     });
 
-    const data = await rsp.json();
+    const data = await resposta.json();
 
-    if (!rsp.ok || !data.pix) {
-      console.error('Erro BSPay:', rsp.status, data);
-      return res.status(rsp.status || 502).json({ error: data });
+    if (!resposta.ok || data.error || !data.qr_code) {
+      return res.status(400).json({ error: data.error || data });
     }
 
     res.json({
-      qr_code: data.pix.qrCode,
-      qr_code_image: data.pix.qrCodeBase64
+      qr_code: data.qr_code,
+      qr_code_image: data.qr_code_image
     });
-
   } catch (err) {
-    console.error('Erro interno:', err);
-    res.status(500).json({ error: { message: 'Erro interno no servidor.' } });
+    res.status(500).json({ error: { message: err.message } });
   }
 });
 
