@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gerador de Pix QR Code</title>
+  <style>
+    body {
+      background-color: #121212;
+      color: #fff;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    label, input, button {
+      display: block;
+      width: 100%;
+      margin-top: 15px;
+    }
+    input, button {
+      padding: 10px;
+      font-size: 1em;
+      border-radius: 6px;
+      border: none;
+    }
+    button {
+      background-color: #0056ff;
+      color: white;
+      cursor: pointer;
+    }
+    #qr-code {
+      margin-top: 30px;
+      text-align: center;
+    }
+    #pix-code {
+      margin-top: 15px;
+      background: #222;
+      padding: 15px;
+      font-family: monospace;
+      user-select: all;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gerador de QR Code Pix</h1>
+  <form id="pix-form">
+    <label>Nome</label><input type="text" name="payerName" required />
+    <label>CPF ou CNPJ</label><input type="text" name="document" required />
+    <label>Valor</label><input type="number" name="amount" required />
+    <label>Email</label><input type="email" name="email" />
+    <button type="submit">Gerar QR Code</button>
+  </form>
+  <div id="qr-code"></div>
+  <div id="pix-code"></div>
+  <script>
+    document.getElementById('pix-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const data = {
+        name: form.payerName.value,
+        document: form.document.value,
+        email: form.email.value,
+        amount: form.amount.value,
+        external_id: 'ext_' + Date.now(),
+        payerQuestion: 'Quem está pagando?'
+      };
+      const res = await fetch('/pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      document.getElementById('qr-code').innerHTML =
+        '<img src="data:image/png;base64,' + json.qr_code_image + '" />';
+      document.getElementById('pix-code').textContent = json.qr_code;
+    });
+  </script>
+</body>
+</html>
