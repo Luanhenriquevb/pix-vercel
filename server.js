@@ -11,8 +11,8 @@ app.post('/pix', async (req, res) => {
     const { name, document, email, amount } = req.body;
 
     // --- Passo 1: criar token de acesso ---
-    const clientId = 'SEU_CLIENT_ID';
-    const clientSecret = 'SEU_CLIENT_SECRET';
+    const clientId = 'cavalcanti2004_8991348703';
+    const clientSecret = 'e1bfb1287b3320b3fa1d85187b46719abc96022d45e403be0e18405f45323957';
     const credentials = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
 
     const tokenResponse = await fetch('https://api.bspay.co/v2/oauth/token', {
