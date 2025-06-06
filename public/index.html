@@ -3,18 +3,100 @@
 <head>
   <meta charset="UTF-8" />
   <title>Gerar Pix BSPay</title>
+  <style>
+    body {
+      background-color: #121212;
+      font-family: Arial, sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding-top: 50px;
+      min-height: 100vh;
+    }
+
+    form {
+      background-color: #1e1e1e;
+      padding: 30px;
+      border-radius: 10px;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+    }
+
+    input {
+      background-color: #2a2a2a;
+      color: #fff;
+    }
+
+    input::placeholder {
+      color: #ccc;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    textarea {
+      width: 100%;
+      margin-top: 15px;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 5px;
+      resize: none;
+      background-color: #2a2a2a;
+      color: #fff;
+    }
+
+    #copiarBtn {
+      background-color: #28a745;
+      margin-top: 10px;
+    }
+
+    #copiadoMsg {
+      margin-top: 10px;
+      color: #00ff88;
+      font-weight: bold;
+      display: none;
+      animation: fadeOut 2s ease-in-out forwards;
+    }
+
+    @keyframes fadeOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; display: none; }
+    }
+  </style>
 </head>
 <body>
-  <h2>Pagamento Pix</h2>
   <form id="pixForm">
-    <input name="name" placeholder="Nome completo" required /><br />
-    <input name="document" placeholder="CPF (somente números)" required /><br />
-    <input name="email" placeholder="Email (opcional)" /><br />
-    <input name="amount" placeholder="Valor (ex: 15.50)" required /><br />
+    <h2>Pagamento Pix</h2>
+    <input name="name" placeholder="Nome completo" required />
+    <input name="document" placeholder="CPF (somente números)" required />
+    <input name="email" placeholder="Email (opcional)" />
+    <input name="amount" placeholder="Valor (ex: 15.50)" required />
     <button type="submit">Gerar Código Pix</button>
   </form>
 
-  <div id="resultado" style="margin-top: 20px;"></div>
+  <div id="resultado" style="max-width: 400px; margin-top: 30px;"></div>
+  <p id="copiadoMsg">Código Pix copiado com sucesso!</p>
 
   <script>
     document.getElementById('pixForm').addEventListener('submit', async (e) => {
@@ -23,7 +105,6 @@
       const formData = new FormData(e.target);
       const dados = Object.fromEntries(formData.entries());
 
-      // ATENÇÃO: substitua esta URL pela do seu backend rodando no Render ou Vercel
       const urlBackend = 'https://pix-vercel-5.onrender.com/pix';
 
       try {
@@ -34,13 +115,23 @@
         });
 
         const json = await resp.json();
-
         const div = document.getElementById('resultado');
-        if (json.pix_code) {
+        const copiadoMsg = document.getElementById('copiadoMsg');
+
+        if (json.qr_code) {
           div.innerHTML = `
-            <p>Código Pix para copiar:</p>
-            <textarea rows="4" cols="60" readonly>${json.pix_code}</textarea>
+            <p><strong>Código Pix:</strong></p>
+            <textarea id="pixCodigo" rows="4" readonly>${json.qr_code}</textarea>
+            <button id="copiarBtn">Copiar</button>
           `;
+
+          document.getElementById('copiarBtn').onclick = () => {
+            const textarea = document.getElementById('pixCodigo');
+            textarea.select();
+            document.execCommand('copy');
+            copiadoMsg.style.display = 'block';
+            setTimeout(() => copiadoMsg.style.display = 'none', 2000);
+          };
         } else {
           div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
         }
