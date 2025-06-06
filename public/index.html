@@ -1,79 +1,41 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>Gerar Pix BSPay</title>
-  <style>
-    body { font-family: Arial, sans-serif; max-width: 500px; margin: 20px auto; }
-    label { display: block; margin-top: 10px; }
-    input { width: 100%; padding: 8px; }
-    button { margin-top: 15px; padding: 10px 20px; }
-    #result { margin-top: 20px; }
-    #qrCodeText { width: 100%; height: 100px; }
-    #qrImage { margin-top: 15px; }
-  </style>
 </head>
 <body>
-  <h1>Gerar Pix BSPay</h1>
+  <h2>Pagamento Pix</h2>
   <form id="pixForm">
-    <label>Nome</label>
-    <input type="text" id="name" name="name" required />
-
-    <label>CPF ou CNPJ</label>
-    <input type="text" id="document" name="document" required />
-
-    <label>Email (opcional)</label>
-    <input type="email" id="email" name="email" />
-
-    <label>Valor (R$)</label>
-    <input type="number" id="amount" name="amount" step="0.01" min="0.01" required />
-
+    <input name="name" placeholder="Nome completo" required><br>
+    <input name="document" placeholder="CPF (somente números)" required><br>
+    <input name="email" placeholder="Email (opcional)"><br>
+    <input name="amount" placeholder="Valor (ex: 15.50)" required><br>
     <button type="submit">Gerar QR Code</button>
   </form>
 
-  <div id="result" style="display:none;">
-    <h2>Código Pix</h2>
-    <textarea id="qrCodeText" readonly></textarea>
-    <br />
-    <img id="qrImage" alt="QR Code Pix" />
-  </div>
+  <div id="resultado" style="margin-top:20px;"></div>
 
   <script>
-    const form = document.getElementById('pixForm');
-    const resultDiv = document.getElementById('result');
-    const qrCodeText = document.getElementById('qrCodeText');
-    const qrImage = document.getElementById('qrImage');
-
-    form.addEventListener('submit', async (e) => {
+    document.getElementById('pixForm').addEventListener('submit', async (e) => {
       e.preventDefault();
 
-      const data = {
-        name: form.name.value.trim(),
-        document: form.document.value.trim(),
-        email: form.email.value.trim(),
-        amount: parseFloat(form.amount.value)
-      };
+      const formData = new FormData(e.target);
+      const dados = Object.fromEntries(formData.entries());
 
-      try {
-        const res = await fetch('/pix', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
+      const resp = await fetch('/pix', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(dados)
+      });
 
-        const json = await res.json();
+      const json = await resp.json();
 
-        if (!res.ok) {
-          alert(json.error?.message || "Erro desconhecido");
-          return;
-        }
-
-        qrCodeText.value = json.qr_code;
-        qrImage.src = "data:image/png;base64," + json.qr_code_image;
-        resultDiv.style.display = "block";
-
-      } catch (err) {
-        alert("Erro ao gerar QR Code: " + err.message);
+      const div = document.getElementById('resultado');
+      if (json.qr_code_image) {
+        div.innerHTML = `<img src="${json.qr_code_image}" alt="QR Code Pix"><br><code>${json.qr_code}</code>`;
+      } else {
+        div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
       }
     });
   </script>

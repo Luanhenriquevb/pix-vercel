@@ -1,19 +1,19 @@
 const express = require('express');
-const router = express.Router();
 const fetch = require('node-fetch');
-const { obterToken } = require('./token'); // Função que retorna o token válido
+const { obterToken } = require('./token');
+
+const router = express.Router();
 
 router.post('/', async (req, res) => {
   try {
     const { name, document, email, amount, external_id } = req.body;
 
-    // Validação dos campos obrigatórios
     if (!name || !document || !amount) {
-      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
+      return res.status(400).json({ error: { message: 'Campos obrigatórios faltando.' } });
     }
 
-    const valor = parseFloat(amount);
-    if (isNaN(valor) || valor <= 0) {
+    const valor = Number(String(amount).replace(',', '.'));
+    if (!Number.isFinite(valor) || valor <= 0) {
       return res.status(400).json({ error: { message: "Campo 'amount' inválido." } });
     }
 
@@ -22,19 +22,13 @@ router.post('/', async (req, res) => {
     const payload = {
       amount: valor,
       external_id: external_id || `id_${Date.now()}`,
-      postbackUrl: "https://pix-vercel-5.onrender.com", // Troque pela sua URL real do webhook
-      payerQuestion: "Pagamento via BSPay",
-      payer: {
-        name,
-        document,
-        email: email || undefined
-      }
+      postbackUrl: 'https://pix-vercel-5.onrender.com/postback', // troque se necessário
+      payerQuestion: 'Pagamento via BSPay',
+      payer: { name, document }
     };
+    if (email) payload.payer.email = email;
 
-    // Remove email se undefined
-    if (!payload.payer.email) delete payload.payer.email;
-
-    const response = await fetch('https://api.bspay.co/v2/pix/qrcode', {
+    const rsp = await fetch('https://api.bspay.co/v2/pix/qrcode', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -43,21 +37,21 @@ router.post('/', async (req, res) => {
       body: JSON.stringify(payload)
     });
 
-    const data = await response.json();
+    const data = await rsp.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data });
+    if (!rsp.ok || !data.pix) {
+      console.error('Erro BSPay:', rsp.status, data);
+      return res.status(rsp.status || 502).json({ error: data });
     }
 
-    // Retorna o QR code (payload Pix) e a imagem base64 para o frontend
     res.json({
       qr_code: data.pix.qrCode,
       qr_code_image: data.pix.qrCodeBase64
     });
 
-  } catch (error) {
-    console.error("Erro pix.js:", error);
-    res.status(500).json({ error: { message: "Erro interno no servidor." } });
+  } catch (err) {
+    console.error('Erro interno:', err);
+    res.status(500).json({ error: { message: 'Erro interno no servidor.' } });
   }
 });
 

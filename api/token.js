@@ -1,28 +1,29 @@
 const fetch = require('node-fetch');
+
 let token = null;
-let tokenExpiraEm = null;
+let expiraEmMs = 0;
 
 async function obterToken() {
-  if (token && tokenExpiraEm && Date.now() < tokenExpiraEm) return token;
+  if (token && Date.now() < expiraEmMs) return token;
 
-  const client_id = process.env.BSPAY_CLIENT_ID;
-  const client_secret = process.env.BSPAY_CLIENT_SECRET;
-  const credentials = Buffer.from(`${client_id}:${client_secret}`).toString('base64');
+  const { BSPAY_CLIENT_ID: id, BSPAY_CLIENT_SECRET: secret } = process.env;
+  if (!id || !secret) throw new Error('Credenciais BSPay não configuradas');
 
-  const response = await fetch('https://api.bspay.co/v2/oauth/token', {
+  const basic = Buffer.from(`${id}:${secret}`).toString('base64');
+
+  const resp = await fetch('https://api.bspay.co/v2/oauth/token', {
     method: 'POST',
     headers: {
-      'Authorization': `Basic ${credentials}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({})
+      Authorization: `Basic ${basic}`,
+      Accept: 'application/json'
+    }
   });
 
-  const data = await response.json();
-  if (!response.ok) throw new Error(data.message || 'Erro ao autenticar');
+  const json = await resp.json();
+  if (!resp.ok) throw new Error(json.message || 'Falha ao obter token');
 
-  token = data.access_token;
-  tokenExpiraEm = Date.now() + (data.expires_in * 1000) - 60000;
+  token = json.access_token;
+  expiraEmMs = Date.now() + (json.expires_in * 1000) - 60000;
   return token;
 }
 
