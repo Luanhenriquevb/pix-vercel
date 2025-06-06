@@ -6,12 +6,13 @@
 </head>
 <body>
   <h2>Pagamento Pix</h2>
+
   <form id="pixForm">
     <input name="name" placeholder="Nome completo" required><br>
     <input name="document" placeholder="CPF (somente números)" required><br>
     <input name="email" placeholder="Email (opcional)"><br>
     <input name="amount" placeholder="Valor (ex: 15.50)" required><br>
-    <button type="submit">Gerar QR Code</button>
+    <button type="submit">Gerar Pix</button>
   </form>
 
   <div id="resultado" style="margin-top:20px;"></div>
@@ -23,7 +24,7 @@
       const formData = new FormData(e.target);
       const dados = Object.fromEntries(formData.entries());
 
-      // Corrige o campo amount para float com duas casas
+      // Garante que o valor seja numérico formatado corretamente
       dados.amount = parseFloat(dados.amount).toFixed(2);
 
       try {
@@ -34,18 +35,30 @@
         });
 
         const json = await resp.json();
-        const div = document.getElementById('resultado');
+        console.log("Resposta do backend:", json);
 
-        if (json.qr_code_image) {
-          div.innerHTML = `<img src="${json.qr_code_image}" alt="QR Code Pix"><br><code>${json.qr_code}</code>`;
+        const div = document.getElementById('resultado');
+        if (json.qr_code) {
+          div.innerHTML = `
+            <p><strong>Pix Copia e Cola:</strong></p>
+            <textarea id="pixCode" rows="4" cols="60" readonly>${json.qr_code}</textarea><br>
+            <button onclick="copiar()">Copiar</button>
+          `;
         } else {
           div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
         }
-      } catch (err) {
-        document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro de conexão</p>`;
-        console.error("Erro no fetch:", err);
+      } catch (erro) {
+        console.error("Erro ao gerar Pix:", erro);
+        document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro inesperado</p>`;
       }
     });
+
+    function copiar() {
+      const texto = document.getElementById('pixCode');
+      texto.select();
+      document.execCommand('copy');
+      alert('Código Pix copiado!');
+    }
   </script>
 </body>
 </html>
