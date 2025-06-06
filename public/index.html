@@ -5,98 +5,114 @@
   <title>Gerar Pix BSPay</title>
   <style>
     body {
-      background-color: #121212;
-      font-family: Arial, sans-serif;
+      background-color: #000;
       color: #fff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      padding-top: 50px;
-      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
     }
 
     form {
-      background-color: #1e1e1e;
-      padding: 30px;
-      border-radius: 10px;
       max-width: 400px;
-      width: 100%;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-    }
-
-    input, button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 12px;
-      border-radius: 5px;
-      border: none;
-      font-size: 16px;
+      margin: 0 auto 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
     }
 
     input {
-      background-color: #2a2a2a;
-      color: #fff;
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      outline: none;
+      background-color: #111;
+      color: #eee;
     }
 
     input::placeholder {
-      color: #ccc;
+      color: #bbb;
     }
 
-    button {
+    button[type="submit"] {
       background-color: #007bff;
+      border: none;
+      padding: 14px;
+      font-size: 18px;
+      border-radius: 6px;
       color: white;
-      font-weight: bold;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: background-color 0.3s ease;
     }
 
-    button:hover {
+    button[type="submit"]:hover {
       background-color: #0056b3;
+    }
+
+    #resultado {
+      max-width: 400px;
+      margin: 0 auto;
+      text-align: center;
+      font-size: 16px;
+      color: #eee;
     }
 
     textarea {
       width: 100%;
-      margin-top: 15px;
       padding: 12px;
       font-size: 16px;
-      border-radius: 5px;
+      border-radius: 6px;
+      border: 1px solid #555;
+      background-color: #111;
+      color: #eee;
       resize: none;
-      background-color: #2a2a2a;
-      color: #fff;
     }
 
     #copiarBtn {
-      background-color: #28a745;
       margin-top: 10px;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
     }
 
-    #copiadoMsg {
+    #copiarBtn:hover {
+      background-color: #0056b3;
+    }
+
+    #copiarMsg {
       margin-top: 10px;
-      color: #00ff88;
+      color: #0f0;
       font-weight: bold;
-      display: none;
-      animation: fadeOut 2s ease-in-out forwards;
+      opacity: 0;
+      transition: opacity 0.4s ease;
     }
 
-    @keyframes fadeOut {
-      0% { opacity: 1; }
-      100% { opacity: 0; display: none; }
+    #copiarMsg.show {
+      opacity: 1;
     }
   </style>
 </head>
 <body>
+  <h2>Pagamento Pix</h2>
   <form id="pixForm">
-    <h2>Pagamento Pix</h2>
-    <input name="name" placeholder="Nome completo" required />
-    <input name="document" placeholder="CPF (somente números)" required />
-    <input name="email" placeholder="Email (opcional)" />
-    <input name="amount" placeholder="Valor (ex: 15.50)" required />
+    <input name="name" placeholder="Nome completo" required /><br />
+    <input name="document" placeholder="CPF (somente números)" required /><br />
+    <input name="email" placeholder="Email (opcional)" /><br />
+    <input name="amount" placeholder="Valor (ex: 15.50)" required /><br />
     <button type="submit">Gerar Código Pix</button>
   </form>
 
-  <div id="resultado" style="max-width: 400px; margin-top: 30px;"></div>
-  <p id="copiadoMsg">Código Pix copiado com sucesso!</p>
+  <div id="resultado"></div>
+  <div id="copiarMsg">Código copiado!</div>
 
   <script>
     document.getElementById('pixForm').addEventListener('submit', async (e) => {
@@ -115,25 +131,33 @@
         });
 
         const json = await resp.json();
+
         const div = document.getElementById('resultado');
-        const copiadoMsg = document.getElementById('copiadoMsg');
+        const copiarMsg = document.getElementById('copiarMsg');
 
         if (json.qr_code) {
           div.innerHTML = `
-            <p><strong>Código Pix:</strong></p>
-            <textarea id="pixCodigo" rows="4" readonly>${json.qr_code}</textarea>
-            <button id="copiarBtn">Copiar</button>
+            <p>Código Pix para copiar:</p>
+            <textarea id="pixCode" rows="4" readonly>${json.qr_code}</textarea>
+            <button id="copiarBtn">Copiar código</button>
           `;
 
+          copiarMsg.classList.remove('show');
+
           document.getElementById('copiarBtn').onclick = () => {
-            const textarea = document.getElementById('pixCodigo');
+            const textarea = document.getElementById('pixCode');
             textarea.select();
+            textarea.setSelectionRange(0, 99999);
             document.execCommand('copy');
-            copiadoMsg.style.display = 'block';
-            setTimeout(() => copiadoMsg.style.display = 'none', 2000);
+
+            copiarMsg.classList.add('show');
+            setTimeout(() => {
+              copiarMsg.classList.remove('show');
+            }, 2000);
           };
         } else {
           div.innerHTML = `<p style="color:red;">Erro: ${json.error?.message || 'Erro desconhecido'}</p>`;
+          copiarMsg.classList.remove('show');
         }
       } catch (error) {
         document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro na comunicação: ${error.message}</p>`;
