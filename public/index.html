@@ -1,42 +1,116 @@
-<form id="pix-form">
-  <input type="text" name="amount" id="amount" placeholder="Valor em R$" required />
-  <button type="submit">Gerar Pix</button>
-</form>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gerar Pix BSPay</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 500px;
+      margin: 30px auto;
+      padding: 0 15px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input, button, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    button {
+      margin-top: 20px;
+      background-color: #2c89ff;
+      border: none;
+      color: white;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #1a5ccc;
+    }
+    .resultado {
+      margin-top: 25px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      background: #f9f9f9;
+      word-break: break-word;
+    }
+  </style>
+</head>
+<body>
+  <h1>Gerar Pix BSPay</h1>
 
-<div id="resultado"></div>
+  <form id="pix-form">
+    <label for="name">Nome:</label>
+    <input type="text" id="name" name="name" required />
 
-<script>
-document.getElementById('pix-form').addEventListener('submit', async function(e) {
-  e.preventDefault();
+    <label for="document">CPF ou CNPJ:</label>
+    <input type="text" id="document" name="document" required />
 
-  const amount = document.getElementById('amount').value;
+    <label for="email">Email (opcional):</label>
+    <input type="email" id="email" name="email" />
 
-  const response = await fetch('/pix', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount })
-  });
+    <label for="amount">Valor (R$):</label>
+    <input type="number" id="amount" name="amount" min="0.01" step="0.01" required />
 
-  const data = await response.json();
+    <button type="submit">Gerar Pix</button>
+  </form>
 
-  if (data.qr_code) {
-    document.getElementById('resultado').innerHTML = `
-      <p><strong>Código Pix:</strong></p>
-      <textarea id="codigo" rows="4" cols="60">${data.qr_code}</textarea>
-      <br>
-      <button onclick="copiarCodigo()">Copiar</button>
-      <br><br>
-      <img src="data:image/png;base64,${data.qr_code_image}" alt="QR Code">
-    `;
-  } else {
-    document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro: ${data.error?.message || 'Erro desconhecido'}</p>`;
-  }
-});
+  <div class="resultado" id="resultado" style="display:none;">
+    <h3>Código Pix:</h3>
+    <textarea id="codigoPix" rows="4" readonly></textarea>
+    <button id="copiarBtn">Copiar Código</button>
+  </div>
 
-function copiarCodigo() {
-  const texto = document.getElementById('codigo');
-  texto.select();
-  document.execCommand('copy');
-  alert("Código Pix copiado!");
-}
-</script>
+  <script>
+    const form = document.getElementById('pix-form');
+    const resultadoDiv = document.getElementById('resultado');
+    const codigoPixTextarea = document.getElementById('codigoPix');
+    const copiarBtn = document.getElementById('copiarBtn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = {
+        name: form.name.value.trim(),
+        document: form.document.value.trim(),
+        email: form.email.value.trim(),
+        amount: form.amount.value.trim()
+      };
+
+      try {
+        const res = await fetch('/pix', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData)
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          alert(data.error?.message || "Erro ao gerar Pix");
+          return;
+        }
+
+        // Exibe o código Pix para copiar
+        codigoPixTextarea.value = data.qr_code;
+        resultadoDiv.style.display = 'block';
+
+      } catch (err) {
+        alert("Erro ao conectar ao servidor.");
+        console.error(err);
+      }
+    });
+
+    copiarBtn.addEventListener('click', () => {
+      codigoPixTextarea.select();
+      document.execCommand('copy');
+      alert('Código Pix copiado para a área de transferência!');
+    });
+  </script>
+</body>
+</html>
