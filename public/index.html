@@ -1,149 +1,42 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Gerador de Pix QR Code</title>
-<style>
-  body {
-    background-color: #121212;
-    color: #fff;
-    font-family: Arial, sans-serif;
-    padding: 20px;
-  }
-  label {
-    display: block;
-    margin-top: 15px;
-    font-weight: bold;
-  }
-  input[type="text"],
-  input[type="email"],
-  input[type="number"] {
-    width: 100%;
-    padding: 8px;
-    margin-top: 5px;
-    border-radius: 5px;
-    border: none;
-    font-size: 1em;
-  }
-  button {
-    margin-top: 20px;
-    background-color: #0056ff;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    font-size: 1.1em;
-    border-radius: 6px;
-    cursor: pointer;
-  }
-  button:hover {
-    background-color: #0041cc;
-  }
-  #qr-code {
-    margin-top: 30px;
-    text-align: center;
-  }
-  #pix-code-container {
-    margin-top: 20px;
-    display: none;
-  }
-  #pix-code {
-    width: 100%;
-    height: 100px;
-    font-family: monospace;
-    font-size: 1em;
-    background-color: #222;
-    border-radius: 6px;
-    color: #eee;
-    padding: 10px;
-    resize: none;
-  }
-</style>
-</head>
-<body>
-
-<h1>Gerador de QR Code Pix</h1>
-
 <form id="pix-form">
-  <label for="payerName">Nome do Pagador</label>
-  <input type="text" id="payerName" name="payerName" required placeholder="Seu nome completo" />
-
-  <label for="document">CPF ou CNPJ</label>
-  <input type="text" id="document" name="document" required placeholder="Somente números" pattern="\d{11}|\d{14}" title="Informe 11 (CPF) ou 14 (CNPJ) dígitos numéricos" />
-
-  <label for="amount">Valor (R$)</label>
-  <input type="number" id="amount" name="amount" required min="0.01" step="0.01" placeholder="Ex: 100.00" />
-
-  <label for="email">E-mail (opcional)</label>
-  <input type="email" id="email" name="email" placeholder="email@exemplo.com" />
-
-  <button type="submit">Gerar QR Code</button>
+  <input type="text" name="amount" id="amount" placeholder="Valor em R$" required />
+  <button type="submit">Gerar Pix</button>
 </form>
 
-<div id="qr-code"></div>
-
-<div id="pix-code-container">
-  <label for="pix-code">Código Pix:</label><br />
-  <textarea id="pix-code" readonly></textarea><br />
-  <button id="copy-btn">Copiar código Pix</button>
-</div>
+<div id="resultado"></div>
 
 <script>
-  const form = document.getElementById('pix-form');
-  const qrCodeDiv = document.getElementById('qr-code');
-  const pixCodeContainer = document.getElementById('pix-code-container');
-  const pixCodeTextarea = document.getElementById('pix-code');
-  const copyBtn = document.getElementById('copy-btn');
+document.getElementById('pix-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
 
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  const amount = document.getElementById('amount').value;
 
-    const data = {
-      name: form.payerName.value.trim(),
-      document: form.document.value.trim(),
-      email: form.email.value.trim(),
-      amount: form.amount.value.trim(),
-      external_id: 'id_' + Date.now()
-    };
-
-    qrCodeDiv.innerHTML = 'Gerando QR Code...';
-    pixCodeContainer.style.display = 'none';
-
-    try {
-      const response = await fetch('/pix', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error?.message || 'Erro ao gerar Pix');
-      }
-
-      const result = await response.json();
-
-      qrCodeDiv.innerHTML = `<img src="data:image/png;base64,${result.qr_code_image}" alt="QR Code Pix" style="max-width:250px;" />`;
-      pixCodeTextarea.value = result.qr_code;
-      pixCodeContainer.style.display = 'block';
-
-    } catch (err) {
-      qrCodeDiv.textContent = 'Erro: ' + err.message;
-      pixCodeContainer.style.display = 'none';
-    }
+  const response = await fetch('/pix', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ amount })
   });
 
-  copyBtn.addEventListener('click', () => {
-    pixCodeTextarea.select();
-    pixCodeTextarea.setSelectionRange(0, 99999); // Para dispositivos móveis
+  const data = await response.json();
 
-    navigator.clipboard.writeText(pixCodeTextarea.value).then(() => {
-      alert('Código Pix copiado!');
-    }).catch(() => {
-      alert('Falha ao copiar o código Pix.');
-    });
-  });
+  if (data.qr_code) {
+    document.getElementById('resultado').innerHTML = `
+      <p><strong>Código Pix:</strong></p>
+      <textarea id="codigo" rows="4" cols="60">${data.qr_code}</textarea>
+      <br>
+      <button onclick="copiarCodigo()">Copiar</button>
+      <br><br>
+      <img src="data:image/png;base64,${data.qr_code_image}" alt="QR Code">
+    `;
+  } else {
+    document.getElementById('resultado').innerHTML = `<p style="color:red;">Erro: ${data.error?.message || 'Erro desconhecido'}</p>`;
+  }
+});
+
+function copiarCodigo() {
+  const texto = document.getElementById('codigo');
+  texto.select();
+  document.execCommand('copy');
+  alert("Código Pix copiado!");
+}
 </script>
-
-</body>
-</html>
