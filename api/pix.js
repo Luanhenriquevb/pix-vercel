@@ -1,36 +1,42 @@
-// api/pix.js
 const express = require('express');
-const router   = express.Router();
-const fetch    = require('node-fetch');
-const { obterToken } = require('./token');   // token.js
+const router = express.Router();
+const fetch = require('node-fetch');
+const { obterToken } = require('./token'); // importa o token
 
 router.post('/', async (req, res) => {
   try {
-    const { name, document, email, amount, external_id = '', payerQuestion = '' } = req.body;
+    const { name, document, email, amount, external_id } = req.body;
 
-    // validação mínima
     if (!name || !document || !amount) {
-      return res.status(400).json({ error: { message: 'name, document e amount são obrigatórios' } });
+      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
     }
 
-    // token OAuth2 BSPay
     const token = await obterToken();
 
-    // payload conforme docs /v2/pix/qrcode
     const payload = {
-      amount: parseFloat(amount).toFixed(2).toString(),  // ex. "15.00"
-      external_id,
-      payerQuestion,
-      payer: {
-        name,
-        document,
-        email: email || ''
+      calendario: { expiracao: 3600 },
+      devedor: {
+        cpf: document.length === 11 ? document : undefined,
+        cnpj: document.length === 14 ? document : undefined,
+        nome: name,
+        email: email || undefined,
       },
-      postbackUrl: process.env.POSTBACK_URL || 'https://pix-vercel-5.onrender.com/postback'
+      valor: {
+        original: parseFloat(amount).toFixed(2).toString()
+      },
+      chave: process.env.BSPAY_PIX_KEY,
+      solicitacaoPagador: "Pagamento via BSPay",
+      infoAdicionais: [
+        { nome: "external_id", valor: external_id || "id_" + Date.now() }
+      ]
     };
 
-    // chamada BSPay
-    const response = await fetch('https://api.bspay.co/v2/pix/qrcode', {
+    // Remove campos undefined
+    if (!payload.devedor.cpf) delete payload.devedor.cpf;
+    if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
+    if (!payload.devedor.email) delete payload.devedor.email;
+
+    const response = await fetch('https://api.bspay.co/v2/pix/cob', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -39,31 +45,18 @@ router.post('/', async (req, res) => {
       body: JSON.stringify(payload)
     });
 
-    // se veio erro, repassa
-    if (!response.ok) {
-      const erro = await response.text();   // às vezes a BSPay devolve HTML
-      console.error('Erro BSPay:', erro);
-      return res.status(response.status).send(erro);
-    }
-
     const data = await response.json();
 
-    /* 
-       A BSPay costuma devolver algo como:
-       {
-         "qrcode": "data:image/png;base64,iVBORw0KG...",
-         "payload": "000201...6304ABCD"
-       }
-       Ajuste os nomes abaixo se forem ligeiramente diferentes.
-    */
-    res.json({
-      qr_code_image: data.qrcode,  // base64 da imagem (vem com prefixo data:image/png;base64,)
-      qr_code:       data.payload  // string “copia-e-cola”
-    });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data });
+    }
 
-  } catch (err) {
-    console.error('Erro /pix:', err);
-    res.status(500).json({ error: { message: 'Erro interno no servidor' } });
+    // 🔧 Ajuste temporário: responde com todo o JSON retornado pela BSPay
+    res.json(data);
+
+  } catch (error) {
+    console.error("Erro pix.js:", error);
+    res.status(500).json({ error: { message: "Erro interno no servidor." } });
   }
 });
 
