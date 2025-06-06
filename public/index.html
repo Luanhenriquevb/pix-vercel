@@ -1,79 +1,149 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Gerador de Pix QR Code</title>
-  <style>
-    body {
-      background-color: #121212;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      padding: 20px;
-    }
-    label, input, button {
-      display: block;
-      width: 100%;
-      margin-top: 15px;
-    }
-    input, button {
-      padding: 10px;
-      font-size: 1em;
-      border-radius: 6px;
-      border: none;
-    }
-    button {
-      background-color: #0056ff;
-      color: white;
-      cursor: pointer;
-    }
-    #qr-code {
-      margin-top: 30px;
-      text-align: center;
-    }
-    #pix-code {
-      margin-top: 15px;
-      background: #222;
-      padding: 15px;
-      font-family: monospace;
-      user-select: all;
-      word-break: break-all;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Gerador de Pix QR Code</title>
+<style>
+  body {
+    background-color: #121212;
+    color: #fff;
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  label {
+    display: block;
+    margin-top: 15px;
+    font-weight: bold;
+  }
+  input[type="text"],
+  input[type="email"],
+  input[type="number"] {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border-radius: 5px;
+    border: none;
+    font-size: 1em;
+  }
+  button {
+    margin-top: 20px;
+    background-color: #0056ff;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1.1em;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  button:hover {
+    background-color: #0041cc;
+  }
+  #qr-code {
+    margin-top: 30px;
+    text-align: center;
+  }
+  #pix-code-container {
+    margin-top: 20px;
+    display: none;
+  }
+  #pix-code {
+    width: 100%;
+    height: 100px;
+    font-family: monospace;
+    font-size: 1em;
+    background-color: #222;
+    border-radius: 6px;
+    color: #eee;
+    padding: 10px;
+    resize: none;
+  }
+</style>
 </head>
 <body>
-  <h1>Gerador de QR Code Pix</h1>
-  <form id="pix-form">
-    <label>Nome</label><input type="text" name="payerName" required />
-    <label>CPF ou CNPJ</label><input type="text" name="document" required />
-    <label>Valor</label><input type="number" name="amount" required />
-    <label>Email</label><input type="email" name="email" />
-    <button type="submit">Gerar QR Code</button>
-  </form>
-  <div id="qr-code"></div>
-  <div id="pix-code"></div>
-  <script>
-    document.getElementById('pix-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const form = e.target;
-      const data = {
-        name: form.payerName.value,
-        document: form.document.value,
-        email: form.email.value,
-        amount: form.amount.value,
-        external_id: 'ext_' + Date.now(),
-        payerQuestion: 'Quem está pagando?'
-      };
-      const res = await fetch('/pix', {
+
+<h1>Gerador de QR Code Pix</h1>
+
+<form id="pix-form">
+  <label for="payerName">Nome do Pagador</label>
+  <input type="text" id="payerName" name="payerName" required placeholder="Seu nome completo" />
+
+  <label for="document">CPF ou CNPJ</label>
+  <input type="text" id="document" name="document" required placeholder="Somente números" pattern="\d{11}|\d{14}" title="Informe 11 (CPF) ou 14 (CNPJ) dígitos numéricos" />
+
+  <label for="amount">Valor (R$)</label>
+  <input type="number" id="amount" name="amount" required min="0.01" step="0.01" placeholder="Ex: 100.00" />
+
+  <label for="email">E-mail (opcional)</label>
+  <input type="email" id="email" name="email" placeholder="email@exemplo.com" />
+
+  <button type="submit">Gerar QR Code</button>
+</form>
+
+<div id="qr-code"></div>
+
+<div id="pix-code-container">
+  <label for="pix-code">Código Pix:</label><br />
+  <textarea id="pix-code" readonly></textarea><br />
+  <button id="copy-btn">Copiar código Pix</button>
+</div>
+
+<script>
+  const form = document.getElementById('pix-form');
+  const qrCodeDiv = document.getElementById('qr-code');
+  const pixCodeContainer = document.getElementById('pix-code-container');
+  const pixCodeTextarea = document.getElementById('pix-code');
+  const copyBtn = document.getElementById('copy-btn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const data = {
+      name: form.payerName.value.trim(),
+      document: form.document.value.trim(),
+      email: form.email.value.trim(),
+      amount: form.amount.value.trim(),
+      external_id: 'id_' + Date.now()
+    };
+
+    qrCodeDiv.innerHTML = 'Gerando QR Code...';
+    pixCodeContainer.style.display = 'none';
+
+    try {
+      const response = await fetch('/pix', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
       });
-      const json = await res.json();
-      document.getElementById('qr-code').innerHTML =
-        '<img src="data:image/png;base64,' + json.qr_code_image + '" />';
-      document.getElementById('pix-code').textContent = json.qr_code;
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'Erro ao gerar Pix');
+      }
+
+      const result = await response.json();
+
+      qrCodeDiv.innerHTML = `<img src="data:image/png;base64,${result.qr_code_image}" alt="QR Code Pix" style="max-width:250px;" />`;
+      pixCodeTextarea.value = result.qr_code;
+      pixCodeContainer.style.display = 'block';
+
+    } catch (err) {
+      qrCodeDiv.textContent = 'Erro: ' + err.message;
+      pixCodeContainer.style.display = 'none';
+    }
+  });
+
+  copyBtn.addEventListener('click', () => {
+    pixCodeTextarea.select();
+    pixCodeTextarea.setSelectionRange(0, 99999); // Para dispositivos móveis
+
+    navigator.clipboard.writeText(pixCodeTextarea.value).then(() => {
+      alert('Código Pix copiado!');
+    }).catch(() => {
+      alert('Falha ao copiar o código Pix.');
     });
-  </script>
+  });
+</script>
+
 </body>
 </html>

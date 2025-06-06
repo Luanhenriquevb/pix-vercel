@@ -1,26 +1,43 @@
 const express = require('express');
 const router = express.Router();
-const { obterToken } = require('./token');
 const fetch = require('node-fetch');
+const { obterToken } = require('./token'); // seu token.js
 
 router.post('/', async (req, res) => {
   try {
-    const token = await obterToken();
-    const { name, document, email, amount, external_id, payerQuestion } = req.body;
+    const { name, document, email, amount, external_id } = req.body;
 
+    if (!name || !document || !amount) {
+      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
+    }
+
+    const token = await obterToken();
+
+    // Monta o payload conforme BSPay exige
     const payload = {
-      amount,
-      external_id,
-      payerQuestion,
-      postbackUrl: 'https://pix-vercel-5.onrender.com/postback',
-      payer: {
-        name,
-        document,
-        email
-      }
+      calendario: { expiracao: 3600 }, // 1h para expirar
+      devedor: {
+        cpf: document.length === 11 ? document : undefined,
+        cnpj: document.length === 14 ? document : undefined,
+        nome: name,
+        email: email || undefined,
+      },
+      valor: {
+        original: parseFloat(amount).toFixed(2).toString()
+      },
+      chave: process.env.BSPAY_PIX_KEY,  // sua chave Pix
+      solicitacaoPagador: "Pagamento via BSPay",
+      infoAdicionais: [
+        { nome: "external_id", valor: external_id || "id_" + Date.now() }
+      ]
     };
 
-    const response = await fetch('https://api.bspay.co/v2/pix/qrcode', {
+    // Limpa undefined
+    if (!payload.devedor.cpf) delete payload.devedor.cpf;
+    if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
+    if (!payload.devedor.email) delete payload.devedor.email;
+
+    const response = await fetch('https://api.bspay.co/v2/pix/cob', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
@@ -30,12 +47,20 @@ router.post('/', async (req, res) => {
     });
 
     const data = await response.json();
-    if (!response.ok) return res.status(400).json(data);
 
-    res.json(data);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Erro interno' });
+    if (!response.ok) {
+      return res.status(response.status).json({ error: data });
+    }
+
+    // Retorna o QR code e a imagem base64
+    res.json({
+      qr_code: data.pix.qrCode,
+      qr_code_image: data.pix.qrCodeBase64
+    });
+
+  } catch (error) {
+    console.error("Erro pix.js:", error);
+    res.status(500).json({ error: { message: "Erro interno no servidor." } });
   }
 });
 
