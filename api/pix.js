@@ -36,7 +36,8 @@ router.post('/', async (req, res) => {
     if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
     if (!payload.devedor.email) delete payload.devedor.email;
 
-    const response = await fetch('https://api.bspay.co/v2/pix/cob', {
+    const response = await fetch('https://api.bspay.co/v2/pix/qrcode
+', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
