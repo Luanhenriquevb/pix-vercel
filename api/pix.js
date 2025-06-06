@@ -1,63 +1,61 @@
 const express = require('express');
+const fetch   = require('node-fetch');
+const { obterToken } = require('./token');     // 👈 sua função que gera o token
+
 const router = express.Router();
-const fetch = require('node-fetch');
-const { obterToken } = require('./token');
 
+// POST /pix
 router.post('/', async (req, res) => {
+  console.log('### req.body recebido:', req.body);    // debug
+
+  const { name, document, email, amount, external_id } = req.body;
+  const valor = Number(amount);                       // converte p/ número
+
+  // validação robusta
+  if (!name || !document || !amount || isNaN(valor) || valor <= 0) {
+    return res.status(400).json({ error: { message: 'name, document e amount válidos são obrigatórios.' } });
+  }
+
   try {
-    const { name, document, email, amount, external_id } = req.body;
-
-    if (!name || !document || !amount) {
-      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
-    }
-
     const token = await obterToken();
 
     const payload = {
       calendario: { expiracao: 3600 },
       devedor: {
         nome: name,
-        cpf: document.length === 11 ? document : undefined,
+        cpf : document.length === 11 ? document : undefined,
         cnpj: document.length === 14 ? document : undefined,
-        email: email || undefined,
+        email: email || undefined
       },
-      valor: {
-        original: parseFloat(amount).toFixed(2).toString()
-      },
-      chave: process.env.BSPAY_PIX_KEY,
-      solicitacaoPagador: "Pagamento via BSPay",
+      valor: { original: valor.toFixed(2) },
+      chave: process.env.BSPAY_PIX_KEY,                // defina no Render!
+      solicitacaoPagador: 'Pagamento BSPay',
       infoAdicionais: [
-        { nome: "external_id", valor: external_id || "id_" + Date.now() }
+        { nome: 'external_id', valor: external_id || 'id_' + Date.now() }
       ]
     };
 
-    if (!payload.devedor.cpf) delete payload.devedor.cpf;
-    if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
-    if (!payload.devedor.email) delete payload.devedor.email;
+    // remove undefined
+    Object.keys(payload.devedor).forEach(k => payload.devedor[k] === undefined && delete payload.devedor[k]);
 
-    const response = await fetch('https://api.bspay.co/v2/pix/qrcode', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    const rsp = await fetch('https://api.bspay.co/v2/pix/qrcode', {
+      method : 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body   : JSON.stringify(payload)
     });
 
-    const data = await response.json();
+    const data = await rsp.json();
 
-    if (!response.ok) {
-      return res.status(response.status).json({ error: data });
-    }
+    if (!rsp.ok) return res.status(rsp.status).json({ error: data });
 
-    res.json({
-      qr_code: data.pix.qrCode,
+    // ajuste os nomes se a BSPay devolver diferente
+    return res.json({
+      qr_code      : data.pix.qrCode,
       qr_code_image: data.pix.qrCodeBase64
     });
-
-  } catch (error) {
-    console.error("Erro pix.js:", error);
-    res.status(500).json({ error: { message: "Erro interno no servidor." } });
+  } catch (err) {
+    console.error('Erro /pix:', err);
+    res.status(500).json({ error: { message: 'Falha interna' } });
   }
 });
 

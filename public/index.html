@@ -1,84 +1,71 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8">
   <title>Gerar Pix BSPay</title>
   <style>
-    body { font-family: Arial, sans-serif; max-width: 600px; margin: 20px auto; }
-    label { display: block; margin: 8px 0 4px; }
-    input, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
-    button { margin-top: 12px; padding: 10px 20px; }
-    #qrCodeText { margin-top: 20px; background: #eee; word-break: break-word; }
+    body { font-family: Arial; max-width: 600px; margin: 30px auto; }
+    label{ display:block;margin:8px 0 4px }
+    input, textarea, button{ width:100%; padding:8px; box-sizing:border-box }
+    button{ margin-top:15px; cursor:pointer }
+    #result{ display:none; margin-top:25px }
   </style>
 </head>
 <body>
-  <h1>Gerar Pix BSPay</h1>
+  <h1>QR Code Pix (BSPay)</h1>
+
   <form id="pixForm">
-    <label for="name">Nome</label>
-    <input id="name" name="name" required />
-
-    <label for="document">CPF ou CNPJ</label>
-    <input id="document" name="document" required />
-
-    <label for="email">Email (opcional)</label>
-    <input id="email" name="email" type="email" />
-
-    <label for="amount">Valor (R$)</label>
-    <input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
-
-    <button type="submit">Gerar QR Code</button>
+    <label>Nome</label>        <input name="name"      required>
+    <label>CPF/CNPJ</label>    <input name="document"  required>
+    <label>E-mail</label>      <input name="email" type="email">
+    <label>Valor (R$)</label>  <input name="amount" type="number" step="0.01" min="0.01" required>
+    <button>Gerar QR Code</button>
   </form>
 
-  <div id="result" style="display:none;">
-    <h2>Código Pix:</h2>
-    <textarea id="qrCodeText" rows="5" readonly></textarea>
-    <button id="copyBtn">Copiar Código</button>
+  <div id="result">
+    <h3>Código Pix</h3>
+    <textarea id="pixCode" rows="4" readonly></textarea>
+    <button id="copyBtn">Copiar</button>
   </div>
 
-  <script>
-    const form = document.getElementById('pixForm');
-    const qrCodeText = document.getElementById('qrCodeText');
-    const resultDiv = document.getElementById('result');
-    const copyBtn = document.getElementById('copyBtn');
+<script>
+const form     = document.getElementById('pixForm');
+const result   = document.getElementById('result');
+const pixCode  = document.getElementById('pixCode');
+const copyBtn  = document.getElementById('copyBtn');
 
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
+form.addEventListener('submit', async e => {
+  e.preventDefault();
 
-      const data = {
-        name: form.name.value.trim(),
-        document: form.document.value.trim(),
-        email: form.email.value.trim(),
-        amount: parseFloat(form.amount.value).toFixed(2) // força valor decimal
-      };
+  const data = {
+    name     : form.name.value.trim(),
+    document : form.document.value.trim(),
+    email    : form.email.value.trim(),
+    amount   : parseFloat(form.amount.value).toFixed(2)   // garante decimal
+  };
 
-      try {
-        const res = await fetch('/pix', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-
-        const json = await res.json();
-
-        if (!res.ok) {
-          alert(json.error?.message || 'Erro desconhecido');
-          return;
-        }
-
-        qrCodeText.value = json.qr_code;
-        resultDiv.style.display = 'block';
-
-      } catch (err) {
-        alert('Erro ao gerar QR Code: ' + err.message);
-      }
+  try {
+    const r  = await fetch('/pix', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify(data)
     });
+    const j  = await r.json();
 
-    copyBtn.addEventListener('click', () => {
-      qrCodeText.select();
-      document.execCommand('copy');
-      alert('Código Pix copiado!');
-    });
-  </script>
+    if (!r.ok) return alert(j.error?.message || 'Erro desconhecido');
+
+    pixCode.value = j.qr_code;
+    result.style.display = 'block';
+  } catch (err) {
+    alert('Erro de rede: ' + err.message);
+  }
+});
+
+copyBtn.onclick = () => {
+  pixCode.select();
+  document.execCommand('copy');
+  alert('Código copiado!');
+};
+</script>
 </body>
 </html>
