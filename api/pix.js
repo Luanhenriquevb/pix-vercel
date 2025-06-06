@@ -1,15 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const fetch = require('node-fetch');
-const { obterToken } = require('./token'); // seu token.js que retorna o token
+const { obterToken } = require('./token');
 
 router.post('/', async (req, res) => {
   try {
     const { name, document, email, amount, external_id } = req.body;
 
-    const valor = parseFloat(amount);
-    if (!name || !document || isNaN(valor) || valor <= 0) {
-      return res.status(400).json({ error: { message: "Campos obrigatórios faltando ou inválidos." } });
+    if (!name || !document || !amount) {
+      return res.status(400).json({ error: { message: "Campos obrigatórios faltando." } });
     }
 
     const token = await obterToken();
@@ -23,7 +22,7 @@ router.post('/', async (req, res) => {
         email: email || undefined,
       },
       valor: {
-        original: valor.toFixed(2)
+        original: parseFloat(amount).toFixed(2).toString()
       },
       chave: process.env.BSPAY_PIX_KEY,
       solicitacaoPagador: "Pagamento via BSPay",
@@ -32,7 +31,6 @@ router.post('/', async (req, res) => {
       ]
     };
 
-    // Limpa campos undefined
     if (!payload.devedor.cpf) delete payload.devedor.cpf;
     if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
     if (!payload.devedor.email) delete payload.devedor.email;

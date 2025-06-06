@@ -9,7 +9,7 @@
     label { display: block; margin: 8px 0 4px; }
     input, textarea { width: 100%; padding: 8px; box-sizing: border-box; }
     button { margin-top: 12px; padding: 10px 20px; }
-    #qrCodeText { margin-top: 20px; padding: 10px; background: #eee; word-break: break-word; }
+    #qrCodeText { margin-top: 20px; background: #eee; word-break: break-word; }
   </style>
 </head>
 <body>
@@ -25,7 +25,7 @@
     <input id="email" name="email" type="email" />
 
     <label for="amount">Valor (R$)</label>
-    <input id="amount" name="amount" type="number" min="0.01" step="0.01" required />
+    <input id="amount" name="amount" type="number" step="0.01" min="0.01" required />
 
     <button type="submit">Gerar QR Code</button>
   </form>
@@ -39,8 +39,8 @@
   <script>
     const form = document.getElementById('pixForm');
     const qrCodeText = document.getElementById('qrCodeText');
-    const copyBtn = document.getElementById('copyBtn');
     const resultDiv = document.getElementById('result');
+    const copyBtn = document.getElementById('copyBtn');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -49,7 +49,7 @@
         name: form.name.value.trim(),
         document: form.document.value.trim(),
         email: form.email.value.trim(),
-        amount: parseFloat(form.amount.value.trim())
+        amount: parseFloat(form.amount.value).toFixed(2) // força valor decimal
       };
 
       try {
