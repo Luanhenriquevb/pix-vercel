@@ -7,25 +7,15 @@ router.post('/', async (req, res) => {
   try {
     const { name, document, email, amount, external_id } = req.body;
 
-    // Validação mais rígida de campos obrigatórios e amount válido
-    if (
-      !name || 
-      !document || 
-      amount === undefined || 
-      amount === null || 
-      isNaN(amount) || 
-      Number(amount) <= 0
-    ) {
+    const valor = parseFloat(amount);
+    if (!name || !document || isNaN(valor) || valor <= 0) {
       return res.status(400).json({ error: { message: "Campos obrigatórios faltando ou inválidos." } });
     }
 
     const token = await obterToken();
 
-    // Converte amount para número com 2 casas decimais
-    const valorOriginal = Number(amount).toFixed(2);
-
     const payload = {
-      calendario: { expiracao: 3600 }, // 1 hora de expiração
+      calendario: { expiracao: 3600 },
       devedor: {
         nome: name,
         cpf: document.length === 11 ? document : undefined,
@@ -33,16 +23,16 @@ router.post('/', async (req, res) => {
         email: email || undefined,
       },
       valor: {
-        original: valorOriginal
+        original: valor.toFixed(2)
       },
-      chave: process.env.BSPAY_PIX_KEY, // sua chave Pix cadastrada
+      chave: process.env.BSPAY_PIX_KEY,
       solicitacaoPagador: "Pagamento via BSPay",
       infoAdicionais: [
         { nome: "external_id", valor: external_id || "id_" + Date.now() }
       ]
     };
 
-    // Remove campos undefined para evitar erros
+    // Limpa campos undefined
     if (!payload.devedor.cpf) delete payload.devedor.cpf;
     if (!payload.devedor.cnpj) delete payload.devedor.cnpj;
     if (!payload.devedor.email) delete payload.devedor.email;
@@ -62,7 +52,6 @@ router.post('/', async (req, res) => {
       return res.status(response.status).json({ error: data });
     }
 
-    // Retorna o código Pix e a imagem em base64
     res.json({
       qr_code: data.pix.qrCode,
       qr_code_image: data.pix.qrCodeBase64
