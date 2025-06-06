@@ -1,27 +1,28 @@
 const express = require('express');
 const path = require('path');
-const cors = require('cors');  // Importa o cors
+const cors = require('cors');
 
 const app = express();
 
-app.use(express.json()); // Para receber JSON no corpo da requisição
+app.use(express.json());
 
-// Configuração CORS - permita apenas seu site ou todos (se quiser liberar geral)
+// Configura CORS para permitir seu site na Hostinger (ajuste a URL conforme seu domínio)
 app.use(cors({
-  origin: 'https://slingmoneyglobal.online', // URL do seu site na Hostinger
-  methods: ['GET', 'POST'],                    // Métodos permitidos
-  allowedHeaders: ['Content-Type', 'Authorization'], // Headers permitidos
+  origin: 'https://slingmoneyglobal.online', 
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Sua rota da API Pix
+// Usa a rota /pix para a API Pix
 app.use('/pix', require('./api/pix'));
 
-// Servir arquivos estáticos (se tiver)
+// Serve os arquivos estáticos na pasta public (se tiver)
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/', (_req, res) => 
-  res.sendFile(path.join(__dirname, 'public', 'index.html'))
-);
+// Rota raiz para teste (opcional)
+app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor online na porta ${PORT}`));

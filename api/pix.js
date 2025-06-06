@@ -46,7 +46,7 @@ router.post('/', async (req, res) => {
       amount: parseFloat(amount),
       external_id: `id_${Date.now()}`,
       payerQuestion: 'Pagamento via Pix',
-      postbackUrl: `${process.env.POSTBACK_URL || 'https://seusite.com/postback'}`,
+      postbackUrl: process.env.POSTBACK_URL || 'https://seusite.com/postback',
       payer: {
         name,
         document,
@@ -65,13 +65,12 @@ router.post('/', async (req, res) => {
 
     const data = await resposta.json();
 
-    if (!resposta.ok || data.error || !data.qr_code) {
+    if (!resposta.ok || data.error || !data.qrcode) {
       return res.status(400).json({ error: data.error || data });
     }
 
     res.json({
-      qr_code: data.qr_code,
-      qr_code_image: data.qr_code_image
+      pix_code: data.qrcode
     });
   } catch (err) {
     res.status(500).json({ error: { message: err.message } });
